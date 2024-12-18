@@ -1,52 +1,71 @@
-import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Screen, ScreenStack } from 'react-native-screens';
 import type { Dispatch, SetStateAction } from 'react';
-import ParentScreen from './ParentScreen';
-import ChildScreen from './ChildScreen';
 
 export type ScreensRendererProps = {
   index: number;
   setArray: Dispatch<SetStateAction<number[]>>;
 };
-const screens = [ParentScreen, ChildScreen];
-
-export const ScreenRenderer = ({ index, setArray }: ScreensRendererProps) => {
-  const Component: any = screens[index];
-  const [willAppear, setWillAppear] = useState(true);
-  const [disappear, setDisappear] = useState(true);
-
-  return (
-    <Screen
-      key={index}
-      activityState={2}
-      onWillAppear={() => setWillAppear(c => !c)} // Need to be on both screen to reproduce the issue
-      onDisappear={() => setDisappear(c => !c)} // Need to be on both screen to reproduce the issue
-      style={StyleSheet.absoluteFill}
-    >
-      <Component
-        setArray={setArray}
-        willAppear={willAppear}
-        disappear={disappear}
-      />
-    </Screen>
-  );
-};
 
 const App = () => {
-  // This array represent the screen stack
-  // It is either
-  // [1] only Parent screen displayed
-  // or [1, 2] Parent and Child Screen are in the stack
-  const [array, setArray] = useState([1]);
+  const [childDisplayed, setChildDisplayed] = useState(false);
+
+  // enableFreeze doesn't fix the issue
+  // enableFreeze(true);
+
+  // autoclose the view
+  useEffect(() => {
+    if (childDisplayed) {
+      setTimeout(() => {
+        setChildDisplayed(false);
+      }, 500);
+    }
+  }, [childDisplayed]);
 
   return (
-    <ScreenStack style={{ flex: 1 }}>
-      {array.map((r, index) => {
-        return <ScreenRenderer key={index} index={index} setArray={setArray} />;
-      })}
+    <ScreenStack style={StyleSheet.absoluteFill}>
+      <Screen
+        key="parent"
+        activityState={2}
+        style={StyleSheet.absoluteFill} >
+        <Pressable
+            style={styles.pressable}
+            onPress={() => {
+              console.log('onPress');
+              setChildDisplayed(true);
+            }}  />
+      </Screen>
+      {childDisplayed ? (
+        <Screen
+          key="child"
+          activityState={2}
+          style={StyleSheet.absoluteFill}>
+            <View style={styles.square}/>
+            <View style={styles.rounded}/>
+        </Screen>) :
+        <></> }
     </ScreenStack>
   );
 };
+
+const styles = StyleSheet.create({
+  pressable: { width: 100, height: 100, backgroundColor: 'red' },
+  square: {
+    height: 40,
+    overflow: 'hidden', // removing hidden fix the issue
+    backgroundColor: 'green',
+  },
+  rounded: {
+    height: 40,
+    width: 60,
+    backgroundColor: 'yellow',
+    overflow: 'hidden', // removing hidden fix the issue
+    borderTopRightRadius: 100,
+    borderTopLeftRadius: 100,
+    borderBottomEndRadius: 100,
+    // borderBottomStartRadius: 100, // If we put the 4 radius, the issue is not reproduced
+  },
+});
 
 export default App;
